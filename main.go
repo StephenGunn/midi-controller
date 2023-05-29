@@ -19,7 +19,8 @@ func main() {
 	defer portmidi.Terminate()
 
 	// list the devices with "aplaymidi -l" to find the correct device ID
-	deviceID := findInputDevice("MIX5R Pro ") // leave the space
+	// leave the space in the name if you want it to work
+	deviceID := findInputDevice("MIX5R Pro ")
 	if deviceID == -1 {
 		log.Fatal("MIDI device not found")
 	}
@@ -31,13 +32,15 @@ func main() {
 	}
 	defer input.Close()
 
-	log.Println("Speaker volume set successfully.")
-
 	// HANDLE MIDI INPUT
 	fmt.Println("Reading MIDI input from device:", deviceID)
 	ch := input.Listen()
+
+	fmt.Println(ch)
+
 	for {
 		event := <-ch
+
 		// Process MIDI event
 		fmt.Println("Received MIDI event:", event)
 		status := event.Status // check against value 176 for proper midi function
@@ -72,7 +75,6 @@ func findInputDevice(deviceName string) int {
 		info := portmidi.Info(portmidi.DeviceID(i))
 
 		// newb logging
-
 		fmt.Println("DEVICE:", info.Name, ", available:", info.IsInputAvailable)
 
 		if info.IsInputAvailable && info.Name == deviceName {
@@ -83,7 +85,6 @@ func findInputDevice(deviceName string) int {
 }
 
 func setVolume(volPercent int64) {
-	// execute the pactl command
 	// Execute the pactl command to set the volume
 	cmd := exec.Command("pactl", "set-sink-volume", "@DEFAULT_SINK@", strings.Join([]string{strconv.Itoa(int(volPercent)), "%"}, ""))
 	commandErr := cmd.Run()
@@ -95,8 +96,7 @@ func setVolume(volPercent int64) {
 }
 
 func setGain(gainPercent int64) {
-	// execute the pactl command
-	// Execute the pactl command to set the volume
+	// Execute the pactl command to set the gain
 	cmd := exec.Command("pactl", "set-source-volume", "@DEFAULT_SOURCE@", strings.Join([]string{strconv.Itoa(int(gainPercent)), "%"}, ""))
 	commandErr := cmd.Run()
 	if commandErr != nil {
