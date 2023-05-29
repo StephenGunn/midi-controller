@@ -1,0 +1,25 @@
+# Compiled binary files
+*.exe
+*.out
+
+# Object files
+*.o
+*.a
+
+# Build cache
+*.cache
+
+# Dependency directories
+/vendor/
+/go.sum
+
+# IDE and editor specific files
+.vscode/
+.idea/
+*.sublime-workspace
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+midi-controller

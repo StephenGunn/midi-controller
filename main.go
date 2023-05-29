@@ -3,18 +3,18 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
-	"os/signal"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/rakyll/portmidi"
 )
 
 func main() {
+	// Terminate PortMidi to try and fix the replugging issue
+	portmidi.Terminate()
+
 	err := portmidi.Initialize()
 	if err != nil {
 		log.Fatal("Failed to initialize PortMidi:", err)
@@ -27,21 +27,16 @@ func main() {
 		log.Fatal("MIDI device not found: MIX5R Pro")
 	}
 
+	// trying to fix the replug problem
+	// Add a 100 millisecond delay
+	time.Sleep(time.Millisecond * 100)
+
 	// Open the MIDI input stream for the specified device
 	stream, err := portmidi.NewInputStream(portmidi.DeviceID(deviceID), 1024)
 	if err != nil {
 		log.Fatalf("Failed to open MIDI input stream: %v", err)
 	}
 	defer stream.Close()
-
-	// Set up signal handling to gracefully exit the program
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-sigCh
-		fmt.Println("Exiting...")
-		os.Exit(0)
-	}()
 
 	fmt.Println("Listening to MIDI input...")
 	for {
@@ -55,29 +50,27 @@ func main() {
 		// Process each MIDI event
 		for _, event := range events {
 			// Print the MIDI event information
-			fmt.Printf("Received MIDI event: Status=%d, Data1=%d, Data2=%d\n",
-				event.Status, event.Data1, event.Data2)
-
-			// Process MIDI event
-			status := event.Status // check against value 176 for proper midi function
-			channel := event.Data1
-			value := event.Data2
+			fmt.Println("Received MIDI event")
 
 			// handle the speaker volume changes
-			if status == 176 && channel == 11 {
-				if value > 100 {
+			if event.Status == 176 && event.Data1 == 11 {
+				fmt.Println(event.Data2)
+				percentage := int64((float64(event.Data2) / 127) * 100) // 127 is max midi volume
+				fmt.Println(percentage)
+				if percentage > 100 {
 					setVolume(100)
 				} else {
-					setVolume(value)
+					setVolume(percentage)
 				}
 			}
 
 			// handle the mic gain changes
-			if status == 176 && channel == 1 {
-				if value > 100 {
+			if event.Status == 176 && event.Data1 == 1 {
+				percentage := int64((float64(event.Data2) / 127) * 100) // 127 is max midi volume
+				if percentage > 100 {
 					setGain(100)
 				} else {
-					setGain(value)
+					setGain(percentage)
 				}
 			}
 		}
@@ -99,6 +92,7 @@ func findMIDIDevice(deviceName string) int {
 
 		// make sure we have the correct midi device
 		if info.Name == deviceName && info.IsInputAvailable {
+			fmt.Println("Device found:", info.Name)
 			return i
 		}
 	}
